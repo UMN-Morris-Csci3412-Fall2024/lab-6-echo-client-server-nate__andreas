@@ -1,4 +1,4 @@
-package echoclient;
+package echoserver;
 
 import java.io.*;
 import java.net.*;
@@ -22,23 +22,23 @@ public class EchoClient {
     }
 
     public void start() throws IOException {
-        // Read from System.in and send to server
         byte[] buffer = new byte[1024];
         int bytesRead;
+        
+        // First read all input and send to server
         while ((bytesRead = System.in.read(buffer)) != -1) {
             output.write(buffer, 0, bytesRead);
             output.flush();
-            
-            // Read response from server
-            bytesRead = input.read(buffer);
-            if (bytesRead != -1) {
-                System.out.write(buffer, 0, bytesRead);
-                System.out.flush();
-            }
         }
         
         // Signal end of client output
         socket.shutdownOutput();
+        
+        // Then read all server responses
+        while ((bytesRead = input.read(buffer)) != -1) {
+            System.out.write(buffer, 0, bytesRead);
+            System.out.flush();
+        }
     }
 
     public void close() {
