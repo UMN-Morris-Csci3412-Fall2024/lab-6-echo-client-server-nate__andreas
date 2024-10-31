@@ -53,7 +53,7 @@ public class EchoClient {
 
     public static void main(String[] args) {
         String host = args.length > 0 ? args[0] : "localhost";
-        int port = args.length > 1 ? Integer.parseInt(args[1]) : 8080;
+        int port = args.length > 1 ? Integer.parseInt(args[1]) : 6013;
         
         EchoClient client = new EchoClient(host, port);
         try {
