@@ -1,39 +1,57 @@
 package echoserver;
+
 import java.io.*;
 import java.net.*;
 
 public class EchoServer {
-    private static final int PORT = 12345; // Make sure this port matches the client's
+    private ServerSocket serverSocket;
+    private final int port;
+
+    public EchoServer(int port) {
+        this.port = port;
+    }
+
+    public void start() throws IOException {
+        serverSocket = new ServerSocket(port);
+        System.out.println("Server listening on port " + port);
+        
+        while (true) {
+            try (Socket clientSocket = serverSocket.accept();
+                 InputStream input = clientSocket.getInputStream();
+                 OutputStream output = clientSocket.getOutputStream()) {
+                
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, bytesRead);
+                    output.flush();
+                }
+            } catch (IOException e) {
+                System.err.println("Error handling client: " + e.getMessage());
+            }
+        }
+    }
+
+    public void stop() {
+        try {
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            System.err.println("Error stopping server: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) {
-        System.out.println("Echo Server is starting...");
-
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Echo Server is running and ready to accept connections on port " + PORT);
-
-            while (true) {
-                try (Socket clientSocket = serverSocket.accept();
-                     InputStream input = clientSocket.getInputStream();
-                     OutputStream output = clientSocket.getOutputStream()) {
-
-                    System.out.println("Client connected: " + clientSocket.getInetAddress());
-
-                    byte[] buffer = new byte[4096]; // Increased buffer size
-                    int bytesRead;
-                    while ((bytesRead = input.read(buffer)) != -1) {
-                        output.write(buffer, 0, bytesRead);
-                        output.flush();
-                    }
-
-                    System.out.println("Client disconnected.");
-                } catch (IOException e) {
-                    System.err.println("Connection error: " + e.getMessage());
-                }
-            }
-        } catch (BindException e) {
-            System.err.println("Port " + PORT + " is already in use. Please choose another port.");
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 8080;
+        EchoServer server = new EchoServer(port);
+        
+        try {
+            server.start();
         } catch (IOException e) {
-            System.err.println("Could not start server on port " + PORT + ": " + e.getMessage());
+            System.err.println("Server error: " + e.getMessage());
+        } finally {
+            server.stop();
         }
     }
 }

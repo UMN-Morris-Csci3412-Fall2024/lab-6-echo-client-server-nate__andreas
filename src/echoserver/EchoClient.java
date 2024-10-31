@@ -1,49 +1,68 @@
-package echoserver;
+package echoclient;
+
 import java.io.*;
 import java.net.*;
 
 public class EchoClient {
-    public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("Usage: java EchoClient <server-hostname>");
-            return;
-        }
+    private Socket socket;
+    private InputStream input; 
+    private OutputStream output;
+    private final String host;
+    private final int port;
 
-        String serverHostname = args[0];
-        int port = 12345; // Make sure this matches the server's port number
+    public EchoClient(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
 
-        try {
-            // Adding a slight delay to ensure server is ready
-            Thread.sleep(1000);
+    public void connect() throws IOException {
+        socket = new Socket(host, port);
+        input = socket.getInputStream();
+        output = socket.getOutputStream();
+    }
 
-            try (Socket socket = new Socket(serverHostname, port);
-                 InputStream input = socket.getInputStream();
-                 OutputStream output = socket.getOutputStream()) {
-
-                // Use BufferedInputStream and BufferedOutputStream for handling of binary data
-                BufferedInputStream bufferedInput = new BufferedInputStream(System.in);
-                BufferedOutputStream bufferedOutput = new BufferedOutputStream(output);
-                BufferedInputStream socketInput = new BufferedInputStream(input);
-
-                byte[] buffer = new byte[4096]; // Increased buffer size
-                int bytesRead;
-                while ((bytesRead = bufferedInput.read(buffer)) != -1) {
-                    bufferedOutput.write(buffer, 0, bytesRead);
-                    bufferedOutput.flush();
-
-                    int serverBytesRead = socketInput.read(buffer);
-                    if (serverBytesRead != -1) {
-                        System.out.write(buffer, 0, serverBytesRead);
-                        System.out.flush();
-                    }
-                }
-
-                System.out.println("Connection closed.");
+    public void start() throws IOException {
+        // Read from System.in and send to server
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = System.in.read(buffer)) != -1) {
+            output.write(buffer, 0, bytesRead);
+            output.flush();
+            
+            // Read response from server
+            bytesRead = input.read(buffer);
+            if (bytesRead != -1) {
+                System.out.write(buffer, 0, bytesRead);
+                System.out.flush();
             }
-        } catch (InterruptedException e) {
-            System.err.println("Client startup interrupted: " + e.getMessage());
+        }
+        
+        // Signal end of client output
+        socket.shutdownOutput();
+    }
+
+    public void close() {
+        try {
+            if (socket != null) {
+                socket.close();
+            }
         } catch (IOException e) {
-            System.err.println("Error connecting to server: " + e.getMessage());
+            System.err.println("Error closing client: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        String host = args.length > 0 ? args[0] : "localhost";
+        int port = args.length > 1 ? Integer.parseInt(args[1]) : 8080;
+        
+        EchoClient client = new EchoClient(host, port);
+        try {
+            client.connect();
+            client.start();
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        } finally {
+            client.close();
         }
     }
 }
